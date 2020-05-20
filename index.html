@@ -2,19 +2,20 @@
 <html>
 
 <head>
-  <title>My first Vue app</title>
+  <meta charset="utf-8">
+  <title>Ultra Hühnergame</title>
 
   <!-- Add Vue to the Project -->
   <script src="https://unpkg.com/vue"></script>
 
   <!-- Add Bootstrap and Bootstrap-Vue CSS to the <head> section -->
-  <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap/dist/css/bootstrap.min.css"/>
-  <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.css"/>
-  
+  <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
+  <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.css" />
+
   <!-- Add Vue and Bootstrap-Vue JS just before the closing </body> tag -->
   <script src="https://unpkg.com/vue/dist/vue.min.js"></script>
   <script src="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.js"></script>
-  
+
   <!-- Polyfill for old and stupid browsers *cough* IE *cough* -->
   <script src="https://unpkg.com/babel-polyfill@latest/dist/polyfill.min.js"></script>
 
@@ -22,60 +23,106 @@
 
 <body>
   <div id="app">
-    {{ message }}<br>
-    {{ getScore }} score [DEBUG: {{ counter }}] <br>
-    <div v-if="factory.count">{{ factory.count }} factories <br></div>
-    <b-button @click="addManual" variant="primary">+ {{ buttonValue }}</b-button><br>
-    buy a factory for <b-button @click="buyFactory"  variant="primary" :disabled="counter < factory.price">{{ factory.price }}</b-button><br>
-    improve factories for <b-button @click="improveFactory"  variant="primary" :disabled="counter < factory.improvmentprice">{{ factory.improvmentprice }}</b-button><br>
+    <b-card-group deck>
+      <b-card style="max-width: 20rem;" header="Eier">
+        <b-layout fluid>
+          <b-row>
+            <b-col>
+              {{ score }} {{ score === 1n ? "Ei" : "Eier"}}
+            </b-col>
+            <b-col cols="4">
+              <b-button @click="addManual" variant="primary">+ {{ buttonValue }}</b-button>
+            </b-col>
+          </b-row>
+        </b-layout>
+      </b-card>
+      <b-card v-if="chicken.allow" style="max-width: 20rem;" header="Hühner">
+        <b-layout fluid>
+          <b-row>
+            <b-col>
+              <div>{{ chicken.count }} {{ chicken.count === 1 ? "Huhn" : "Hühner"}}</div>
+            </b-col>
+            <b-col cols="4">
+              <b-button @click="buyChicken" variant="primary" :disabled="score < chicken.price">{{ chicken.price }}
+              </b-button>
+            </b-col>
+          </b-row>
+          <b-row v-if="chicken.allowImprovements">
+            <b-col>
+              Verbessere Hühner
+            </b-col>
+            <b-col cols="4">
+              <b-button @click="improveChicken" variant="primary" class="mt-2" :disabled="score < chicken.improvmentprice">
+                {{ chicken.improvmentprice }}
+              </b-button>
+            </b-col>
+          </b-row>
+        </b-layout>
+      </b-card>
+    </b-card-group>
+    <!-- DEBUG
+      <pre>
+        {{ $data }}
+      </pre>
+    -->
   </div>
 
   <script>
     var app = new Vue({
-      el: '#app', 
+      el: '#app',
       data: {
         message: 'Hello Vue!',
-        counter: 0,
+        score: 0n,
         increment: 0.00,
         buttonValue: 1,
-        factory: {
+        chicken: {
           count: 0,
           price: 100,
-          strenght: 0.001, 
-          improvmentprice: 500,
+          improvmentprice: 400,
+          allow: false,
+          allowImprovements: false,
+          production: {
+            strength: 1,
+            stepsRequired: 1000,
+            stepsDone: 0
+          }
         }
       },
       created: function () {
+        BigInt.prototype.toJSON = function () { return this.toString() }
         setInterval(() => {
           this.update()
         }, 10)
       },
-      computed: {
-        getScore: function () {
-          return Math.floor(this.counter)
-        }
-      },
       methods: {
         update: function () {
-          this.counter += this.increment
-        },
-        addManual: function () {
-          this.counter += this.buttonValue
-        },
-        buyFactory: function () {
-          if (this.counter >= this.factory.price) {
-            this.counter -= this.factory.price
-            this.factory.count++
-            this.factory.price *= 1.2
-            this.increment = this.factory.count * this.factory.strenght
+          this.chicken.production.stepsDone += this.chicken.count * this.chicken.production.strength
+          if (this.chicken.production.stepsDone >= this.chicken.production.stepsRequired) {
+            this.score += BigInt(this.chicken.production.strength)
+            this.chicken.production.stepsDone = 0
           }
         },
-        improveFactory: function () {
-          if (this.counter >= this.factory.improvmentprice) {
-            this.counter -= this.factory.improvmentprice
-            this.factory.strenght*=2
-            this.factory.improvmentprice *= 1.2
-            this.increment = this.factory.count * this.factory.strenght
+        addManual: function () {
+          this.score += BigInt(this.buttonValue)
+          if (this.score == BigInt(50)) {
+            this.chicken.allow = true
+          }
+        },
+        buyChicken: function () {
+          if (this.score >= this.chicken.price) {
+            this.score -= BigInt(this.chicken.price)
+            this.chicken.count++
+            this.chicken.price = Math.ceil(this.chicken.price * 1.2)
+            if (this.chicken.count == 5) {
+              this.chicken.allowImprovements = true
+            }
+          }
+        },
+        improveChicken: function () {
+          if (this.score >= this.chicken.improvmentprice) {
+            this.score -= BigInt(this.chicken.improvmentprice)
+            this.chicken.production.stepsRequired = Math.floor(this.chicken.production.stepsRequired * 0.95)
+            this.chicken.improvmentprice = Math.ceil(this.chicken.improvmentprice * 1.5)
           }
         }
       }
