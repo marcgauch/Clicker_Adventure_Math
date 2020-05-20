@@ -27,7 +27,7 @@
     <div v-if="factory.count">{{ factory.count }} factories <br></div>
     <b-button @click="addManual" variant="primary">+ {{ buttonValue }}</b-button><br>
     buy a factory for <b-button @click="buyFactory"  variant="primary" :disabled="counter < factory.price">{{ factory.price }}</b-button><br>
-    improve a factory for <b-button @click="improveFactory"  variant="primary" :disabled="counter < factory.improvmentprice">{{ factory.improvmentprice }}</b-button><br>
+    improve factories for <b-button @click="improveFactory"  variant="primary" :disabled="counter < factory.improvmentprice">{{ factory.improvmentprice }}</b-button><br>
   </div>
 
   <script>
