@@ -37,7 +37,7 @@
         <b-layout fluid>
           <b-row>
             <b-col>
-              {{ operations.addition.a }} + {{ operations.addition.b }} = 
+              {{ operations.addition.a }} + {{ operations.addition.b }} =
             </b-col>
             <b-col cols="7">
               <b-input v-model="operations.addition.entered" @keyup="enteredAResult('addition')"></b-input>
@@ -54,7 +54,7 @@
         <b-layout fluid>
           <b-row>
             <b-col>
-              {{ operations.subtraction.a }} - {{ operations.subtraction.b }} = 
+              {{ operations.subtraction.a }} - {{ operations.subtraction.b }} =
             </b-col>
             <b-col cols="7">
               <b-input v-model="operations.subtraction.entered" @keyup="enteredAResult('subtraction')"></b-input>
@@ -64,14 +64,30 @@
       </b-card>
     </b-card-group>
     <b-card-group deck>
-      <b-card header="Shop" style="max-width: 15rem;" h>
+      <b-card header="Shop" style="max-width: 30rem;" h>
         <b-layout fluid>
           <b-row v-if="!operations.subtraction.allow">
             <b-col>
               subraction
             </b-col>
             <b-col>
-              <b-button variant="primary" :disabled="money < operations.subtraction.unlockPrice" @click="buy('subtraction')">{{ operations.subtraction.unlockPrice }} CHF</b-button>
+              <b-button variant="primary" :disabled="money < operations.subtraction.unlockPrice"
+                @click="buy('subtraction')">{{ operations.subtraction.unlockPrice }} CHF</b-button>
+            </b-col>
+            <b-col cols="6">
+              Enable Subtraction
+            </b-col>
+          </b-row>
+          <b-row>
+            <b-col>
+              Addition bigger numbers
+            </b-col>
+            <b-col>
+              <b-button variant="primary" :disabled="money < operations.addition.maxNumber.upgradePrice"
+                @click="buy('addition_maxNumber')">{{ operations.addition.maxNumber.upgradePrice }} CHF</b-button>
+            </b-col>
+            <b-col cols="6">
+              Enable Subtraction
             </b-col>
           </b-row>
         </b-layout>
@@ -92,19 +108,26 @@
         money: 47n,
         operations: {
           addition: {
-            worth: 1,
-            a: 0,
-            b: 0,
-            result: '0',
+            worth: 1n,
+            maxNumber: {
+              number: 10,
+              upgradePrice: 30n,
+              worthIncrease: function (now) { return now + 1n },
+              costIncrease: function (now) { return now * 3n / 2n }
+            },
+            a: 4,
+            b: 5,
+            result: '9',
             entered: ''
           },
           subtraction: {
             allow: false,
             unlockPrice: 50n,
-            worth: 2,
-            a: 0,
-            b: 0,
-            result: '0',
+            worth: 2n,
+            maxNumber: 10,
+            a: 9,
+            b: 6,
+            result: '3',
             entered: ''
           }
         }
@@ -117,38 +140,38 @@
       },
       methods: {
         update: function () {
-         
+
         },
-        getRandomNumber() {
-          return Math.floor(Math.random() * 10)
+        getRandomNumber(max) {
+          return Math.floor(Math.random() * max)
         },
         enteredAResult: function (which) {
           switch (which) {
             case "addition":
-              if (this.operations.addition.entered === this.operations.addition.result){
+              if (this.operations.addition.entered === this.operations.addition.result) {
                 this.operations.addition.entered = ''
                 this.money += BigInt(this.operations.addition.worth)
-                const A = this.getRandomNumber()
-                const B = this.getRandomNumber()
+                const A = this.getRandomNumber(this.operations.addition.maxNumber.number)
+                const B = this.getRandomNumber(this.operations.addition.maxNumber.number)
                 this.operations.addition.a = A
                 this.operations.addition.b = B
-                this.operations.addition.result = `${A+B}`
+                this.operations.addition.result = `${A + B}`
               }
               break
             case "subtraction":
-              if (this.operations.subtraction.entered === this.operations.subtraction.result){
+              if (this.operations.subtraction.entered === this.operations.subtraction.result) {
                 this.operations.subtraction.entered = ''
                 this.money += BigInt(this.operations.subtraction.worth)
-                const A = this.getRandomNumber()
-                const B = this.getRandomNumber()
-                if (A >= B){
+                const A = this.getRandomNumber(this.operations.subtraction.maxNumber.number)
+                const B = this.getRandomNumber(this.operations.subtraction.maxNumber.number)
+                if (A >= B) {
                   this.operations.subtraction.a = A
                   this.operations.subtraction.b = B
-                  this.operations.subtraction.result = `${A-B}`
+                  this.operations.subtraction.result = `${A - B}`
                 } else {
                   this.operations.subtraction.a = B
                   this.operations.subtraction.b = A
-                  this.operations.subtraction.result = `${B-A}`
+                  this.operations.subtraction.result = `${B - A}`
                 }
               }
               break
@@ -159,7 +182,11 @@
             case "subtraction":
               this.money -= this.operations.subtraction.unlockPrice
               this.operations.subtraction.allow = true
-            break
+              break
+            case "addition_maxNumber":
+              this.money -= this.operations.addition.maxNumber.upgradePrice
+              this.operations.addition.worth = this.operations.addition.maxNumber.worthIncrease(this.operations.addition.worth)
+              this.operations.addition.maxNumber.upgradePrice = this.operations.addition.maxNumber.costIncrease(this.operations.addition.maxNumber.upgradePrice)
           }
         }
       }
