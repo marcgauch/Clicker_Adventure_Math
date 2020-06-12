@@ -24,67 +24,88 @@
 <body>
   <div id="app">
     <b-card-group deck>
-      <b-card style="max-width: 20rem;" header="Eier">
+      <b-card style="max-width: 15em;" header="Money">
+        {{ money }} CHF
+      </b-card>
+    </b-card-group>
+    <b-card-group deck>
+      <b-card style="max-width: 15rem;">
+        <template v-slot:header>
+          Addition
+          <span class="float-right">[+{{ operations.addition.worth }} CHF]</span>
+        </template>
         <b-layout fluid>
           <b-row>
             <b-col>
-              {{ score }} {{ score === 1n ? "Ei" : "Eier"}}
+              {{ operations.addition.a }} + {{ operations.addition.b }} = 
             </b-col>
-            <b-col cols="4">
-              <b-button @click="addManual" variant="primary">+ {{ buttonValue }}</b-button>
+            <b-col cols="7">
+              <b-input v-model="operations.addition.entered" @keyup="enteredAResult('addition')"></b-input>
             </b-col>
           </b-row>
         </b-layout>
       </b-card>
-      <b-card v-if="chicken.allow" style="max-width: 20rem;" header="Hühner">
+
+      <b-card style="max-width: 15rem;" v-if="operations.subtraction.allow">
+        <template v-slot:header>
+          Subtraction
+          <span class="float-right">[+{{ operations.subtraction.worth }} CHF]</span>
+        </template>
         <b-layout fluid>
           <b-row>
             <b-col>
-              <div>{{ chicken.count }} {{ chicken.count === 1 ? "Huhn" : "Hühner"}}</div>
+              {{ operations.subtraction.a }} - {{ operations.subtraction.b }} = 
             </b-col>
-            <b-col cols="4">
-              <b-button @click="buyChicken" variant="primary" :disabled="score < chicken.price">{{ chicken.price }}
-              </b-button>
-            </b-col>
-          </b-row>
-          <b-row v-if="chicken.allowImprovements">
-            <b-col>
-              Verbessere Hühner
-            </b-col>
-            <b-col cols="4">
-              <b-button @click="improveChicken" variant="primary" class="mt-2" :disabled="score < chicken.improvmentprice">
-                {{ chicken.improvmentprice }}
-              </b-button>
+            <b-col cols="7">
+              <b-input v-model="operations.subtraction.entered" @keyup="enteredAResult('subtraction')"></b-input>
             </b-col>
           </b-row>
         </b-layout>
       </b-card>
     </b-card-group>
-    <!-- DEBUG
+    <b-card-group deck>
+      <b-card header="Shop" style="max-width: 15rem;" h>
+        <b-layout fluid>
+          <b-row v-if="!operations.subtraction.allow">
+            <b-col>
+              subraction
+            </b-col>
+            <b-col>
+              <b-button variant="primary" :disabled="money < operations.subtraction.unlockPrice" @click="buy('subtraction')">{{ operations.subtraction.unlockPrice }} CHF</b-button>
+            </b-col>
+          </b-row>
+        </b-layout>
+      </b-card>
+
+    </b-card-group>
+    <b-card header="debug">
       <pre>
-        {{ $data }}
+{{ $data }}
       </pre>
-    -->
+    </b-card>
   </div>
 
   <script>
     var app = new Vue({
       el: '#app',
       data: {
-        message: 'Hello Vue!',
-        score: 0n,
-        increment: 0.00,
-        buttonValue: 1,
-        chicken: {
-          count: 0,
-          price: 100,
-          improvmentprice: 400,
-          allow: false,
-          allowImprovements: false,
-          production: {
-            strength: 1,
-            stepsRequired: 1000,
-            stepsDone: 0
+        money: 47n,
+        operations: {
+          addition: {
+            worth: 1,
+            a: 0,
+            b: 0,
+            result: '0',
+            entered: ''
+          },
+          subtraction: {
+            allow: false,
+            unlockPrice: 50n,
+            worth: 2,
+            a: 0,
+            b: 0,
+            result: '0',
+            entered: ''
           }
         }
       },
@@ -96,33 +117,49 @@
       },
       methods: {
         update: function () {
-          this.chicken.production.stepsDone += this.chicken.count * this.chicken.production.strength
-          if (this.chicken.production.stepsDone >= this.chicken.production.stepsRequired) {
-            this.score += BigInt(this.chicken.production.strength)
-            this.chicken.production.stepsDone = 0
+         
+        },
+        getRandomNumber() {
+          return Math.floor(Math.random() * 10)
+        },
+        enteredAResult: function (which) {
+          switch (which) {
+            case "addition":
+              if (this.operations.addition.entered === this.operations.addition.result){
+                this.operations.addition.entered = ''
+                this.money += BigInt(this.operations.addition.worth)
+                const A = this.getRandomNumber()
+                const B = this.getRandomNumber()
+                this.operations.addition.a = A
+                this.operations.addition.b = B
+                this.operations.addition.result = `${A+B}`
+              }
+              break
+            case "subtraction":
+              if (this.operations.subtraction.entered === this.operations.subtraction.result){
+                this.operations.subtraction.entered = ''
+                this.money += BigInt(this.operations.subtraction.worth)
+                const A = this.getRandomNumber()
+                const B = this.getRandomNumber()
+                if (A >= B){
+                  this.operations.subtraction.a = A
+                  this.operations.subtraction.b = B
+                  this.operations.subtraction.result = `${A-B}`
+                } else {
+                  this.operations.subtraction.a = B
+                  this.operations.subtraction.b = A
+                  this.operations.subtraction.result = `${B-A}`
+                }
+              }
+              break
           }
         },
-        addManual: function () {
-          this.score += BigInt(this.buttonValue)
-          if (this.score == BigInt(50)) {
-            this.chicken.allow = true
-          }
-        },
-        buyChicken: function () {
-          if (this.score >= this.chicken.price) {
-            this.score -= BigInt(this.chicken.price)
-            this.chicken.count++
-            this.chicken.price = Math.ceil(this.chicken.price * 1.2)
-            if (this.chicken.count == 5) {
-              this.chicken.allowImprovements = true
-            }
-          }
-        },
-        improveChicken: function () {
-          if (this.score >= this.chicken.improvmentprice) {
-            this.score -= BigInt(this.chicken.improvmentprice)
-            this.chicken.production.stepsRequired = Math.floor(this.chicken.production.stepsRequired * 0.95)
-            this.chicken.improvmentprice = Math.ceil(this.chicken.improvmentprice * 1.5)
+        buy(what) {
+          switch (what) {
+            case "subtraction":
+              this.money -= this.operations.subtraction.unlockPrice
+              this.operations.subtraction.allow = true
+            break
           }
         }
       }
