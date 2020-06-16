@@ -24,12 +24,28 @@
 <body>
   <div id="app">
     <b-card-group deck>
-      <b-card style="max-width: 15em;" header="Money">
+      <b-card header="Money" style="max-width: 20em;">
         {{ money }} CHF
+      </b-card>
+      <b-card header="bruteforce" style="max-width: 20em;" v-if="bruteforce.enabled">
+        <b-layout fluid>
+          <b-row>
+            <b-col>lower limit</b-col>
+            <b-col><b-input v-model="bruteforce.min" type="number"></b-input></b-col>
+          </b-row>
+          <b-row>
+            <b-col>upper limit</b-col>
+            <b-col><b-input v-model="bruteforce.max" type="number"></b-input></b-col>
+          </b-row>
+          <b-row>
+            <b-col>guess</b-col>
+            <b-col>{{ bruteforce.guess }}</b-col>
+          </b-row>
+      </b-layout>
       </b-card>
     </b-card-group>
     <b-card-group deck>
-      <b-card style="max-width: 15rem;">
+      <b-card style="max-width: 20rem;">
         <template v-slot:header>
           Addition
           <span class="float-right">[+{{ operations.addition.worth }} CHF]</span>
@@ -64,7 +80,7 @@
       </b-card>
     </b-card-group>
     <b-card-group deck>
-      <b-card header="Shop" style="max-width: 30rem;" h>
+      <b-card header="Shop" style="max-width: 70rem;">
         <b-layout fluid>
           <b-row v-if="!operations.subtraction.allow">
             <b-col>
@@ -87,7 +103,19 @@
                 @click="buy('addition_maxNumber')">{{ operations.addition.maxNumber.upgradePrice }} CHF</b-button>
             </b-col>
             <b-col cols="6">
-              Enable Subtraction
+              Increase the number range
+            </b-col>
+          </b-row>
+          <b-row>
+            <b-col>
+              Brutefoce
+            </b-col>
+            <b-col>
+              <b-button variant="primary" :disabled="money < bruteforce.unlockPrice"
+                @click="buy('enable_bruteforce')">{{ bruteforce.unlockPrice }} CHF</b-button>
+            </b-col>
+            <b-col cols="6">
+              Let a computer do the work
             </b-col>
           </b-row>
         </b-layout>
@@ -117,19 +145,34 @@
             },
             a: 4,
             b: 5,
-            result: '9',
+            result: 9,
             entered: ''
           },
           subtraction: {
             allow: false,
             unlockPrice: 50n,
             worth: 2n,
-            maxNumber: 10,
+            maxNumber: {
+              number: 10,
+              upgradePrice: 30n,
+              worthIncrease: function (now) { return now + 1n },
+              costIncrease: function (now) { return now * 3n / 2n }
+            },
             a: 9,
-            b: 6,
-            result: '3',
+            b: 5,
+            result: 4,
             entered: ''
           }
+        },
+        bruteforce: {
+          allow: false,
+          unlockPrice: 10n,
+          min: 0,
+          max: 5,
+          guess: 0,
+          guessDisplay: '0',
+          interval: null,
+          intervalTime: 1
         }
       },
       created: function () {
@@ -145,21 +188,38 @@
         getRandomNumber(max) {
           return Math.floor(Math.random() * max)
         },
+        doBruteforce() {
+          this.bruteforce.guess++
+          if (this.bruteforce.guess < this.bruteforce.min){
+            this.bruteforce.guess = this.bruteforce.min
+          }
+          if (this.bruteforce.guess > this.bruteforce.max) {
+            this.bruteforce.guess = this.bruteforce.min
+          }
+          // make it to 0003 // or however many max has
+          const len = this.bruteforce.max.toString().length
+          const guess = `00000000000000${this.bruteforce.guess}`
+          this.bruteforce.guessDisplay = guess.substr(-len)
+          this.operations.addition.entered = this.bruteforce.guessDisplay
+          this.enteredAResult("addition")
+          this.operations.subtraction.entered = this.bruteforce.guessDisplay
+          this.enteredAResult("subtraction")
+        },
         enteredAResult: function (which) {
           switch (which) {
             case "addition":
-              if (this.operations.addition.entered === this.operations.addition.result) {
+              if (parseInt(this.operations.addition.entered) === this.operations.addition.result) {
                 this.operations.addition.entered = ''
                 this.money += BigInt(this.operations.addition.worth)
                 const A = this.getRandomNumber(this.operations.addition.maxNumber.number)
                 const B = this.getRandomNumber(this.operations.addition.maxNumber.number)
                 this.operations.addition.a = A
                 this.operations.addition.b = B
-                this.operations.addition.result = `${A + B}`
+                this.operations.addition.result = A + B
               }
               break
             case "subtraction":
-              if (this.operations.subtraction.entered === this.operations.subtraction.result) {
+              if (parseInt(this.operations.subtraction.entered) === this.operations.subtraction.result) {
                 this.operations.subtraction.entered = ''
                 this.money += BigInt(this.operations.subtraction.worth)
                 const A = this.getRandomNumber(this.operations.subtraction.maxNumber.number)
@@ -167,11 +227,11 @@
                 if (A >= B) {
                   this.operations.subtraction.a = A
                   this.operations.subtraction.b = B
-                  this.operations.subtraction.result = `${A - B}`
+                  this.operations.subtraction.result = A - B
                 } else {
                   this.operations.subtraction.a = B
                   this.operations.subtraction.b = A
-                  this.operations.subtraction.result = `${B - A}`
+                  this.operations.subtraction.result = B - A
                 }
               }
               break
@@ -187,9 +247,18 @@
               this.money -= this.operations.addition.maxNumber.upgradePrice
               this.operations.addition.worth = this.operations.addition.maxNumber.worthIncrease(this.operations.addition.worth)
               this.operations.addition.maxNumber.upgradePrice = this.operations.addition.maxNumber.costIncrease(this.operations.addition.maxNumber.upgradePrice)
-          }
+              this.operations.addition.maxNumber.number *= 2
+              break
+            case "enable_bruteforce":
+              this.money -= this.bruteforce.unlockPrice
+              this.bruteforce.enabled = true
+              this.bruteforce.interval = setInterval(() => {
+                this.doBruteforce();
+              }, this.bruteforce.intervalTime)
+              break
+            }
         }
-      }
+      }      
     })
   </script>
 </body>
